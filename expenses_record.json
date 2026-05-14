@@ -1,0 +1,32 @@
+[
+    {
+        "amount": 200.0,
+        "category": "Discretionary",
+        "description": "pdm oajan",
+        "date": "2026-05-13"
+    },
+    {
+        "amount": 10.79,
+        "category": "Food",
+        "description": "chicken wings",
+        "date": "2026-05-13"
+    },
+    {
+        "amount": 500.0,
+        "category": "Transport",
+        "description": "trip to Miami",
+        "date": "2026-05-13"
+    },
+    {
+        "amount": 79.0,
+        "category": "Bills",
+        "description": "Dorm rent for may",
+        "date": "2026-05-13"
+    },
+    {
+        "amount": 5.99,
+        "category": "Others",
+        "description": "Durex ultra-slim condom",
+        "date": "2026-05-13"
+    }
+]

@@ -1,6 +1,9 @@
 import os
 import json
 import datetime
+import calendar
+import matplotlib.pyplot as plt
+import numpy as np
 
 class Expense:
     total_spending = 0
@@ -31,7 +34,7 @@ DEFAULT_CATEGORIES = {"Food": 0,
                     }
     
 def load_expensesfile():
-    file_path = "C:\\Users\\cauil\\OneDrive\\Desktop\\Python-workspace\\expense_tracker\\expenses_record.json"
+    file_path = os.path.join(os.path.dirname(__file__), "expenses_record.json")
 
     if not os.path.exists(file_path):
         return []
@@ -48,7 +51,7 @@ def load_expensesfile():
             return []
 
 def load_dailyExpenditures():
-    file_path = "C:\\Users\\cauil\\OneDrive\\Desktop\\Python-workspace\\expense_tracker\\dailyExpendituresRecord.json"
+    file_path = os.path.join(os.path.dirname(__file__), "dailyExpendituresRecord.json")
     if not os.path.exists(file_path):
         return {}
     
@@ -59,7 +62,7 @@ def load_dailyExpenditures():
             return {}
 
 def load_spending_per_category():
-    file_path = "C:\\Users\\cauil\\OneDrive\\Desktop\\Python-workspace\\expense_tracker\\ExpendituresPerCategoryRecord.json"
+    file_path = os.path.join(os.path.dirname(__file__), "ExpendituresPerCategoryRecord.json")
     if not os.path.exists(file_path):
         return DEFAULT_CATEGORIES.copy()
     
@@ -69,8 +72,19 @@ def load_spending_per_category():
         except json.JSONDecodeError:
             return DEFAULT_CATEGORIES.copy()
 
-def update(expenses, spending_eachday, spending_percategory):
-    file_path = "C:\\Users\\cauil\\OneDrive\\Desktop\\Python-workspace\\expense_tracker\\expenses_record.json"
+def load_monthlyRecords():
+    file_path = os.path.join(os.path.dirname(__file__), "monthlyRecords.json")
+    if not os.path.exists(file_path):
+        return []
+    
+    with open(file_path, "r") as file:
+        try:
+            return json.load(file)
+        except json.JSONDecodeError:
+            return []
+
+def update(expenses, spending_eachday, spending_percategory, monthly_stats):
+    file_path = os.path.join(os.path.dirname(__file__), "expenses_record.json")
     temp = []
     for expense in expenses:
         data = expense.to_dict()
@@ -79,18 +93,22 @@ def update(expenses, spending_eachday, spending_percategory):
     with open(file_path, "w") as expenses_file:
         json.dump(temp, expenses_file, indent=4)
     
-    file_path1 = "C:\\Users\\cauil\\OneDrive\\Desktop\\Python-workspace\\expense_tracker\\dailyExpendituresRecord.json"
+    file_path1 = os.path.join(os.path.dirname(__file__), "dailyExpendituresRecord.json")
     with open(file_path1, "w") as daily_record_file:
         json.dump(spending_eachday, daily_record_file, indent=4)
     
-    file_path2 = "C:\\Users\\cauil\\OneDrive\\Desktop\\Python-workspace\\expense_tracker\\ExpendituresPerCategoryRecord.json"
+    file_path2 = os.path.join(os.path.dirname(__file__), "ExpendituresPerCategoryRecord.json")
     with open(file_path2, "w") as category_spending_file:
         json.dump(spending_percategory, category_spending_file, indent=4)
+    
+    file_path3 = os.path.join(os.path.dirname(__file__), "monthlyRecords.json")
+    with open(file_path3, "w") as monthlyRecords_file:
+        json.dump(monthly_stats, monthlyRecords_file, indent=4)
 
 def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
 
-def add(expenses, spending_eachday, spending_percategory):
+def add(expenses, spending_eachday, spending_percategory, monthly_stats):
     clear_screen()
     try:
         amount = float(input("Enter amount: "))
@@ -141,6 +159,27 @@ def add(expenses, spending_eachday, spending_percategory):
     
     spending_percategory[category] += amount
 
+    current_month = datetime.datetime.now().strftime("%m")
+    current_month = int(current_month)
+    alr_exists = False
+    for month in monthly_stats: #month is a dictionary
+        if current_month == month["month"]:
+            month["total_exp"] += amount
+            month[category] += amount
+            alr_exists = True
+            break
+    if not alr_exists:
+        this_month = {"month": current_month,
+                      "total_exp": 0,
+                      "Food": 0,
+                      "Transport": 0,
+                      "Bills": 0,
+                      "Discretionary": 0,
+                      "Others": 0}
+        this_month["total_exp"] += amount
+        this_month[category] += amount
+        monthly_stats.append(this_month)
+
     Description = input("Enter description: ")
     for expense in expenses: #expense is an object/instance
         while expense.description == Description:
@@ -151,11 +190,11 @@ def add(expenses, spending_eachday, spending_percategory):
     
     expense = Expense(amount, category, Description, date)
     expenses.append(expense)
-    update(expenses, spending_eachday, spending_percategory)
+    update(expenses, spending_eachday, spending_percategory, monthly_stats)
     print("Expense Added Successfuly!")
     input("Press Enter to continue...")
 
-def remove(expenses, spending_eachday, spending_percategory):
+def remove(expenses, spending_eachday, spending_percategory, monthly_stats):
     clear_screen()
     if len(expenses) == 0:
         print("You currently have no expenses added yet")
@@ -170,9 +209,13 @@ def remove(expenses, spending_eachday, spending_percategory):
             spending_eachday[expense.date] -= expense.amount
             if spending_eachday[expense.date] == 0:
                 del spending_eachday[expense.date]
+            for m in monthly_stats: #m is a dict
+                if expense.date.month == m["month"]:
+                    m["total_exp"] -= expense.amount
+                    m[expense.category] -= expense.amount
             Expense.total_spending -= expense.amount    
             expenses.remove(expense)
-            update(expenses, spending_eachday, spending_percategory)
+            update(expenses, spending_eachday, spending_percategory, monthly_stats)
             print("Expense successfully deleted from your list!")
             return
         
@@ -192,7 +235,7 @@ def view_history(expenses):
         print(f"Purchase Description: {expense.description}")
         print(f"Category: {expense.category}")
         print(f"Date: {expense.date}")
-        print(f"Amount: ${expense.amount}")
+        print(f"Amount: ${expense.amount:.2f}")
         print()
 
     input("Press Enter to continue...")
@@ -213,8 +256,12 @@ def analytics(expenses, spending_eachday, spending_percategory):
     print(f"Your highest spending day was on {highest_spendingday} totaling to ${max:.2f}")
     print()
     print("Total Spending by Category: ")
-    for category, spending in spending_percategory.items():
-        print(f"{category}: ${spending}")
+    sorted_totals = sorted(spending_percategory.items(), #list of tuples
+                           key=lambda x: x[1],
+                           reverse=True)
+
+    for pair in sorted_totals:
+        print(f"{pair[0]}: ${pair[1]:.2f}")
     
     input("Press Enter to continue...")
 
@@ -228,15 +275,49 @@ def search_purchases(expenses): #search by date or search the product
             print(f"Purchase Description: {expense.description}")
             print(f"Category: {expense.category}")
             print(f"Date: {expense.date}")
-            print(f"Amount: {expense.amount}")
+            print(f"Amount: {expense.amount:.2f}")
             print()
 
     input("Press Enter to continue...")
+
+def monthly_summary(monthly_stats):
+    clear_screen()
+    month = input("Enter month number: ")
+    if not month.isdigit():
+        print("Invalid Input")
+        input("Press any key to continue...")
+        return
+    
+    month = int(month)
+    if month < 1 or month > 12:
+        print("Invalid Input")
+        input("Press any key to continue...")
+        return
+    
+    categories = ["Food", "Transport", "Bills", "Discretionary", "Others"]
+    month_name = calendar.month_name[month]
+    for monthly_rec in monthly_stats:
+        if month == monthly_rec["month"]:
+            print(f"Total Spending: ${monthly_rec['total_exp']:.2f}")
+            print()
+            x = np.array(categories)
+            y = np.array([monthly_rec.get(cat, 0) for cat in categories])
+            plt.bar(x,y)
+            plt.title(f"{month_name} Spending Summary")
+            plt.xlabel("Category")
+            plt.ylabel("Amount")
+            plt.show()
+            input("Press any key to continue...")
+            return
+
+    print(f"No records found for the month of {month_name}")
+    input("Press any key to continue...")
 
 def main():
     expenses = load_expensesfile()
     spending_eachday = load_dailyExpenditures()
     spending_percategory = load_spending_per_category()
+    monthly_stats = load_monthlyRecords()
 
     while True:
         clear_screen()
@@ -245,7 +326,8 @@ def main():
         print("3. View Expenses History")
         print("4. View Analytics")
         print("5. Search by date or description")
-        print("6. Exit")
+        print("6. Monthly Summary")
+        print("7. Exit")
 
         choice = input("Enter the number beside your choice: ")
 
@@ -257,9 +339,9 @@ def main():
 
         match choice:
             case 1:
-                add(expenses, spending_eachday, spending_percategory)
+                add(expenses, spending_eachday, spending_percategory, monthly_stats)
             case 2:
-                remove(expenses, spending_eachday, spending_percategory)
+                remove(expenses, spending_eachday, spending_percategory, monthly_stats)
             case 3:
                 view_history(expenses)
             case 4:
@@ -267,6 +349,8 @@ def main():
             case 5:
                 search_purchases(expenses)
             case 6:
+                monthly_summary(monthly_stats)
+            case 7:
                 break
             case _:
                 print("Invalid Input!")
