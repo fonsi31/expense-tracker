@@ -32,7 +32,7 @@ venv\Scripts\activate
 python expense_tracker.py
 ```
 
-## Future Improvement
+## Future Improvements
 
 - Export reports to CSV
 - Add a more sophisticated graphical visualization (e.g line graph)
